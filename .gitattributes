@@ -1,0 +1,10 @@
+# GitHub Linguist overrides
+# https://github.com/github/linguist
+
+# Mark TypeScript as the main language
+*.ts linguist-detectable=true
+*.tsx linguist-detectable=true
+
+# Exclude vendor/generated files from language stats
+pnpm-lock.yaml linguist-generated=true
+*.tsbuildinfo linguist-generated=true
