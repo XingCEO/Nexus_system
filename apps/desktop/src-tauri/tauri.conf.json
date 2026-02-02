@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "identifier": "ai.nexus.supersystem",
   "build": {
-    "beforeDevCommand": "cd ../../../apps/web && pnpm dev",
+    "beforeDevCommand": "pnpm --filter @super/web dev",
     "devUrl": "http://localhost:3000",
-    "beforeBuildCommand": "cd ../../../apps/web && pnpm build",
-    "frontendDist": "../../../apps/web/.next"
+    "beforeBuildCommand": "pnpm --filter @super/web build",
+    "frontendDist": "../../web/.next"
   },
   "app": {
     "windows": [
