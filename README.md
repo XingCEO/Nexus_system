@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/XingCEO/Nexus_system/main/docs/assets/logo.svg" alt="Nexus Logo" width="120" height="120" />
-
 # Nexus
 
 ### 🚀 帶記憶的 AI Agent 編排平台
