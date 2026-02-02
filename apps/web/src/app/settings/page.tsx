@@ -104,6 +104,51 @@ function SettingsContent() {
     google: '',
   })
 
+  const [localLLM, setLocalLLM] = useState({
+    provider: 'none' as 'none' | 'lmstudio' | 'ollama',
+    lmstudioUrl: 'http://localhost:1234/v1',
+    ollamaUrl: 'http://localhost:11434',
+    ollamaModel: 'llama3.2',
+  })
+
+  const [providerStatus, setProviderStatus] = useState<{
+    lmstudio: boolean
+    ollama: boolean
+    ollamaModels: string[]
+  }>({
+    lmstudio: false,
+    ollama: false,
+    ollamaModels: [],
+  })
+
+  const [isCheckingProviders, setIsCheckingProviders] = useState(false)
+
+  // 檢查本機 LLM 狀態
+  const checkLocalProviders = async () => {
+    setIsCheckingProviders(true)
+    try {
+      const res = await fetch('/api/chat')
+      const data = await res.json()
+      const providers = data.providers || []
+
+      const lmstudio = providers.find((p: { provider: string; available: boolean }) => p.provider === 'lmstudio')
+      const ollama = providers.find((p: { provider: string; available: boolean; models?: string[] }) => p.provider === 'ollama')
+
+      setProviderStatus({
+        lmstudio: lmstudio?.available || false,
+        ollama: ollama?.available || false,
+        ollamaModels: ollama?.models || [],
+      })
+    } catch (e) {
+      console.error('Failed to check providers:', e)
+    }
+    setIsCheckingProviders(false)
+  }
+
+  useEffect(() => {
+    checkLocalProviders()
+  }, [])
+
   const [preferences, setPreferences] = useState({
     language: 'zh-TW',
     defaultModel: 'gpt-4',
@@ -279,7 +324,140 @@ function SettingsContent() {
                   <p className="text-sm text-muted-foreground mt-1">設定 LLM 供應商的 API 金鑰</p>
                 </div>
 
+                {/* 本機 LLM 區塊 */}
                 <div className="space-y-4 max-w-lg">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium">本機 LLM（免費）</h3>
+                    <button
+                      onClick={checkLocalProviders}
+                      disabled={isCheckingProviders}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5"
+                    >
+                      {isCheckingProviders ? (
+                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+                          <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M23 4v6h-6M1 20v-6h6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                      重新偵測
+                    </button>
+                  </div>
+
+                  {/* LM Studio */}
+                  <div className={cn(
+                    "p-4 rounded-xl border space-y-3",
+                    providerStatus.lmstudio ? "border-green-500/50 bg-green-500/5" : "border-border/50"
+                  )}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-8 h-8 rounded-lg flex items-center justify-center",
+                          providerStatus.lmstudio ? "bg-green-500/20" : "bg-purple-500/10"
+                        )}>
+                          <svg viewBox="0 0 24 24" fill="none" className={cn("w-5 h-5", providerStatus.lmstudio ? "text-green-500" : "text-purple-500")}>
+                            <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
+                            <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium flex items-center gap-2">
+                            LM Studio
+                            {providerStatus.lmstudio && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-500">已連線</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">本機運行，完全免費</div>
+                        </div>
+                      </div>
+                    </div>
+                    <input
+                      type="text"
+                      value={localLLM.lmstudioUrl}
+                      onChange={(e) => setLocalLLM({ ...localLLM, lmstudioUrl: e.target.value })}
+                      placeholder="http://localhost:1234/v1"
+                      className="w-full h-10 px-3 rounded-lg border border-border/50 bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    {!providerStatus.lmstudio && (
+                      <p className="text-xs text-muted-foreground">
+                        請先啟動 LM Studio 並載入模型，然後點選「Start Server」
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Ollama */}
+                  <div className={cn(
+                    "p-4 rounded-xl border space-y-3",
+                    providerStatus.ollama ? "border-green-500/50 bg-green-500/5" : "border-border/50"
+                  )}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-8 h-8 rounded-lg flex items-center justify-center",
+                          providerStatus.ollama ? "bg-green-500/20" : "bg-cyan-500/10"
+                        )}>
+                          <svg viewBox="0 0 24 24" fill="none" className={cn("w-5 h-5", providerStatus.ollama ? "text-green-500" : "text-cyan-500")}>
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
+                            <circle cx="12" cy="12" r="4" fill="currentColor"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium flex items-center gap-2">
+                            Ollama
+                            {providerStatus.ollama && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-500">已連線</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {providerStatus.ollamaModels.length > 0
+                              ? `${providerStatus.ollamaModels.length} 個模型可用`
+                              : '本機運行，完全免費'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={localLLM.ollamaUrl}
+                        onChange={(e) => setLocalLLM({ ...localLLM, ollamaUrl: e.target.value })}
+                        placeholder="http://localhost:11434"
+                        className="h-10 px-3 rounded-lg border border-border/50 bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      {providerStatus.ollamaModels.length > 0 ? (
+                        <select
+                          value={localLLM.ollamaModel}
+                          onChange={(e) => setLocalLLM({ ...localLLM, ollamaModel: e.target.value })}
+                          className="h-10 px-3 rounded-lg border border-border/50 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        >
+                          {providerStatus.ollamaModels.map((model) => (
+                            <option key={model} value={model}>{model}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          value={localLLM.ollamaModel}
+                          onChange={(e) => setLocalLLM({ ...localLLM, ollamaModel: e.target.value })}
+                          placeholder="llama3.2"
+                          className="h-10 px-3 rounded-lg border border-border/50 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                      )}
+                    </div>
+                    {!providerStatus.ollama && (
+                      <p className="text-xs text-muted-foreground">
+                        請執行 <code className="px-1 py-0.5 rounded bg-secondary">ollama serve</code> 啟動服務
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* 雲端 API 區塊 */}
+                <div className="space-y-4 max-w-lg pt-4 border-t border-border/50">
+                  <h3 className="text-sm font-medium">雲端 API（需要金鑰）</h3>
                   <div className="p-4 rounded-xl border border-border/50 space-y-3">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
