@@ -1,6 +1,6 @@
 <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- 白色圓角背景 -->
-  <rect x="0" y="0" width="120" height="120" rx="24" fill="#FFFFFF"/>
-  <!-- Logo 置中放大 -->
-  <path d="M30 24 L78 24 L78 54 L90 54 L90 96 L42 96 L42 66 L30 66 Z" fill="#000000"/>
+  <!-- 白色圓形背景 -->
+  <circle cx="60" cy="60" r="60" fill="#FFFFFF"/>
+  <!-- Logo 置中 -->
+  <path d="M33 30 L75 30 L75 57 L87 57 L87 90 L45 90 L45 63 L33 63 Z" fill="#000000"/>
 </svg>
