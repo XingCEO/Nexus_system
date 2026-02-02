@@ -331,18 +331,20 @@ export class NodeRegistry {
           case 'stringify':
             result = JSON.stringify(data)
             break
-          case 'extract':
+          case 'extract': {
             // 簡單的欄位提取
             const path = String(config.expression).split('.')
-            result = path.reduce((obj: any, key) => obj?.[key], data)
+            result = path.reduce((obj: unknown, key) => (obj as Record<string, unknown>)?.[key], data)
             break
-          case 'template':
+          }
+          case 'template': {
             // 簡單的模板替換
             result = String(config.expression).replace(
               /\{\{(\w+)\}\}/g,
-              (_, key) => String((data as any)?.[key] ?? '')
+              (_, key) => String((data as Record<string, unknown>)?.[key] ?? '')
             )
             break
+          }
         }
 
         return { result }

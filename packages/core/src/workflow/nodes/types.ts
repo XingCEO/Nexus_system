@@ -1,4 +1,4 @@
-import type { WorkflowNode, NodeType, NodeData } from '../index'
+import type { NodeType } from '../index'
 
 /**
  * 節點定義

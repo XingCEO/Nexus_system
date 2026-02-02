@@ -141,8 +141,8 @@ export class AgentRuntime {
   }
 
   private async extractAndSaveMemory(
-    userMessage: string,
-    response: string
+    _userMessage: string,
+    _response: string
   ): Promise<void> {
     // TODO: 實作智慧記憶提取
     // 這裡可以用 LLM 分析對話，自動提取重要資訊

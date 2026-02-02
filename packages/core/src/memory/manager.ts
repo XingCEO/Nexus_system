@@ -14,12 +14,10 @@ export interface MemoryManagerConfig {
 export class MemoryManager {
   private store: MemoryStore
   private extractor?: MemoryExtractor
-  private autoExtract: boolean
 
   constructor(config: MemoryManagerConfig) {
     this.store = config.store
     this.extractor = config.extractor
-    this.autoExtract = config.autoExtract ?? true
   }
 
   /**

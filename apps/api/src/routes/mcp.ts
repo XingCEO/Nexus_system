@@ -168,9 +168,7 @@ app.patch('/:name', zValidator('json', serverConfigSchema.partial()), async (c) 
 
 // 取得 Server 的工具列表
 app.get('/:name/tools', async (c) => {
-  const name = c.req.param('name')
-
-  // TODO: 從實際 MCP Client 取得
+  // TODO: 從實際 MCP Client 取得 (use c.req.param('name'))
   const tools = [
     {
       name: 'read_file',
@@ -202,7 +200,6 @@ app.get('/:name/tools', async (c) => {
 
 // 呼叫工具
 app.post('/:name/tools/:tool/call', async (c) => {
-  const name = c.req.param('name')
   const tool = c.req.param('tool')
   const body = await c.req.json()
 

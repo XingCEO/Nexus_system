@@ -39,11 +39,7 @@ app.get('/', async (c) => {
 
 // 搜尋記憶
 app.get('/search', async (c) => {
-  const query = c.req.query('q')
-  const agentId = c.req.query('agentId')
-  const limit = parseInt(c.req.query('limit') || '10')
-
-  // TODO: 實作語意搜尋
+  // TODO: 實作語意搜尋 (use c.req.query for 'q', 'agentId', 'limit')
   return c.json({ success: true, data: [] })
 })
 
