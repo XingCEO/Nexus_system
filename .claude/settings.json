@@ -1,0 +1,51 @@
+{
+  "$schema": "https://claude.ai/code/settings.schema.json",
+  "project": {
+    "name": "超級系統",
+    "description": "帶記憶的 AI Agent 編排平台 - 你的 AI 分身"
+  },
+  "mcp": {
+    "servers": {
+      "filesystem": {
+        "command": "npx",
+        "args": ["-y", "@anthropic/mcp-server-filesystem", "/Users/xuser/Documents/超級系統"],
+        "description": "本地檔案系統操作"
+      },
+      "github": {
+        "command": "npx",
+        "args": ["-y", "@anthropic/mcp-server-github"],
+        "env": {
+          "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+        },
+        "description": "GitHub 操作（PR、Issue、Repo）"
+      },
+      "memory": {
+        "command": "npx",
+        "args": ["-y", "@anthropic/mcp-server-memory"],
+        "description": "持久化記憶存儲"
+      },
+      "puppeteer": {
+        "command": "npx",
+        "args": ["-y", "@anthropic/mcp-server-puppeteer"],
+        "description": "瀏覽器自動化與截圖"
+      },
+      "postgres": {
+        "command": "npx",
+        "args": ["-y", "@anthropic/mcp-server-postgres"],
+        "env": {
+          "DATABASE_URL": "${DATABASE_URL}"
+        },
+        "description": "PostgreSQL 資料庫操作"
+      }
+    }
+  },
+  "preferences": {
+    "language": "zh-TW",
+    "codeStyle": {
+      "typescript": true,
+      "semicolons": false,
+      "singleQuote": true,
+      "tabWidth": 2
+    }
+  }
+}
