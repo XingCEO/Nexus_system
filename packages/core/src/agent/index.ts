@@ -1,8 +1,13 @@
 import type { Agent, Message } from '@super/shared/types'
 import { generateId } from '@super/shared/utils'
 import { MemoryManager } from '../memory'
+import type { LLMProvider as BaseLLMProvider } from '../llm/types'
 
-export interface LLMProvider {
+/**
+ * Agent 專用的 LLM Provider 介面
+ * 擴展自核心 LLM Provider，支援 Agent 特定功能
+ */
+export interface AgentLLMProvider {
   chat(messages: Message[], options?: ChatOptions): Promise<string>
   stream(messages: Message[], options?: ChatOptions): AsyncIterable<string>
 }
@@ -22,14 +27,14 @@ export interface Tool {
 
 export interface AgentRuntimeConfig {
   agent: Agent
-  llm: LLMProvider
+  llm: AgentLLMProvider
   memory?: MemoryManager
   tools?: Tool[]
 }
 
 export class AgentRuntime {
   private agent: Agent
-  private llm: LLMProvider
+  private llm: AgentLLMProvider
   private memory?: MemoryManager
   private tools: Tool[]
   private conversationHistory: Message[] = []
