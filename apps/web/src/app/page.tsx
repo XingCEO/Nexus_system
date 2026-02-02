@@ -1,8 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Logo } from '@/components/Logo'
+import { getCurrentUser } from '@/lib/auth'
 
 function NavIcon({ id, className }: { id: string; className?: string }) {
   switch (id) {
@@ -192,6 +195,30 @@ const pricingPlans = [
 ]
 
 export default function LandingPage() {
+  const router = useRouter()
+  const [isChecking, setIsChecking] = useState(true)
+
+  useEffect(() => {
+    getCurrentUser().then((user) => {
+      if (user) {
+        router.replace('/app')
+      } else {
+        setIsChecking(false)
+      }
+    })
+  }, [router])
+
+  // 檢查中不顯示內容，避免閃爍
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 rounded-lg bg-foreground text-background flex items-center justify-center animate-pulse">
+          <Logo className="w-5 h-5" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}

@@ -12,8 +12,8 @@ interface ProviderStatus {
   models?: string[]
 }
 
-// 從環境變數讀取配置
-function getLLMConfig(): LLMProviderConfig {
+// 從環境變數讀取配置，並自動偵測本機 LLM
+async function getLLMConfig(): Promise<LLMProviderConfig> {
   // 優先使用 Anthropic
   if (process.env.ANTHROPIC_API_KEY) {
     return {
@@ -32,8 +32,8 @@ function getLLMConfig(): LLMProviderConfig {
     }
   }
 
-  // 嘗試本機 LM Studio
-  if (process.env.LMSTUDIO_BASE_URL || process.env.USE_LMSTUDIO === 'true') {
+  // 明確指定使用 LM Studio
+  if (process.env.USE_LMSTUDIO === 'true') {
     return {
       provider: 'lmstudio',
       baseUrl: process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1',
@@ -41,8 +41,8 @@ function getLLMConfig(): LLMProviderConfig {
     }
   }
 
-  // 嘗試本機 Ollama
-  if (process.env.OLLAMA_BASE_URL || process.env.USE_OLLAMA === 'true') {
+  // 明確指定使用 Ollama
+  if (process.env.USE_OLLAMA === 'true') {
     return {
       provider: 'ollama',
       baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
@@ -50,7 +50,28 @@ function getLLMConfig(): LLMProviderConfig {
     }
   }
 
-  // 預設嘗試 Ollama (最常見的本機選項)
+  // 自動偵測本機 LLM（優先 LM Studio，其次 Ollama）
+  const available = await detectAvailableProviders()
+
+  const lmstudio = available.find((p: ProviderStatus) => p.provider === 'lmstudio')
+  if (lmstudio?.available) {
+    return {
+      provider: 'lmstudio',
+      baseUrl: process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1',
+      model: process.env.LMSTUDIO_MODEL || 'local-model',
+    }
+  }
+
+  const ollama = available.find((p: ProviderStatus) => p.provider === 'ollama')
+  if (ollama?.available) {
+    return {
+      provider: 'ollama',
+      baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+      model: ollama.models?.[0] || process.env.OLLAMA_MODEL || 'llama3.2',
+    }
+  }
+
+  // 沒有可用的 provider
   return {
     provider: 'ollama',
     baseUrl: 'http://localhost:11434',
@@ -62,7 +83,7 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, stream = false } = await req.json()
 
-    const config = getLLMConfig()
+    const config = await getLLMConfig()
 
     // 檢查是否有可用的 provider
     if (config.provider === 'ollama' || config.provider === 'lmstudio') {

@@ -19,7 +19,7 @@ const prompts = [
 
 export function Chat() {
   const { user } = useUser()
-  const { messages, isLoading, sendMessage, clearMessages, limitError, clearLimitError } = useChat()
+  const { messages, isLoading, sendMessage, clearMessages, regenerateLastMessage, limitError, clearLimitError } = useChat()
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -107,24 +107,10 @@ export function Chat() {
                   key={message.id}
                   message={message}
                   isLatest={index === messages.length - 1}
+                  onRegenerate={() => regenerateLastMessage()}
+                  onRegenerateWithModel={(model) => regenerateLastMessage(model)}
                 />
               ))}
-              {isLoading && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-4 py-8"
-                >
-                  <div className="w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center">
-                    <LogoMark className="w-5 h-5" />
-                  </div>
-                  <div className="flex gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-foreground/30 animate-pulse" />
-                    <span className="w-2 h-2 rounded-full bg-foreground/30 animate-pulse [animation-delay:150ms]" />
-                    <span className="w-2 h-2 rounded-full bg-foreground/30 animate-pulse [animation-delay:300ms]" />
-                  </div>
-                </motion.div>
-              )}
               <div ref={messagesEndRef} />
             </motion.div>
           )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { generateId } from '@super/shared/utils'
 import { checkMessageLimit, incrementMessageCount, LimitCheckResult } from '@/lib/usage'
 import { useUser } from '@/components/AuthGuard'
@@ -10,6 +10,7 @@ interface Message {
   role: 'user' | 'assistant' | 'system'
   content: string
   createdAt: Date
+  isStreaming?: boolean
 }
 
 export function useChat() {
@@ -17,6 +18,7 @@ export function useChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [limitError, setLimitError] = useState<LimitCheckResult | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const sendMessage = useCallback(async (content: string) => {
     // 檢查訊息限制
@@ -29,6 +31,12 @@ export function useChat() {
     // 清除之前的限制錯誤
     setLimitError(null)
 
+    // 取消之前的請求
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    abortControllerRef.current = new AbortController()
+
     // 新增用戶訊息
     const userMessage: Message = {
       id: generateId(),
@@ -37,7 +45,16 @@ export function useChat() {
       createdAt: new Date(),
     }
 
-    setMessages((prev) => [...prev, userMessage])
+    // 新增空的 AI 訊息（用於串流填充）
+    const assistantMessage: Message = {
+      id: generateId(),
+      role: 'assistant',
+      content: '',
+      createdAt: new Date(),
+      isStreaming: true,
+    }
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage])
     setIsLoading(true)
 
     // 增加訊息計數
@@ -52,48 +69,259 @@ export function useChat() {
             role: m.role,
             content: m.content,
           })),
+          stream: true,
         }),
+        signal: abortControllerRef.current.signal,
       })
 
       if (!response.ok) {
         throw new Error('Failed to send message')
       }
 
-      const data = await response.json()
+      const contentType = response.headers.get('content-type')
 
-      const assistantMessage: Message = {
-        id: generateId(),
-        role: 'assistant',
-        content: data.content,
-        createdAt: new Date(),
+      // 串流模式
+      if (contentType?.includes('text/event-stream')) {
+        const reader = response.body?.getReader()
+        const decoder = new TextDecoder()
+
+        if (reader) {
+          let fullContent = ''
+
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+
+            const chunk = decoder.decode(value, { stream: true })
+            const lines = chunk.split('\n')
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6)
+                if (data === '[DONE]') {
+                  // 串流結束
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMessage.id
+                        ? { ...m, isStreaming: false }
+                        : m
+                    )
+                  )
+                  break
+                }
+
+                try {
+                  const parsed = JSON.parse(data)
+                  if (parsed.content) {
+                    fullContent += parsed.content
+                    // 即時更新訊息內容
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMessage.id
+                          ? { ...m, content: fullContent }
+                          : m
+                      )
+                    )
+                  }
+                  if (parsed.error) {
+                    throw new Error(parsed.error)
+                  }
+                } catch (e) {
+                  // 忽略解析錯誤
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // 非串流模式
+        const data = await response.json()
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessage.id
+              ? { ...m, content: data.content, isStreaming: false }
+              : m
+          )
+        )
+      }
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        return
       }
 
-      setMessages((prev) => [...prev, assistantMessage])
-    } catch (error) {
       console.error('Chat error:', error)
 
-      // 錯誤時顯示模擬回應（開發用）
-      const mockResponse: Message = {
-        id: generateId(),
-        role: 'assistant',
-        content: `收到你的訊息：「${content}」\n\n這是模擬回應。請設定 API 金鑰以連接真實的 AI 模型。`,
-        createdAt: new Date(),
+      // 錯誤時顯示錯誤訊息
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessage.id
+            ? {
+                ...m,
+                content: `抱歉，發生錯誤。請確認 LLM 服務正在運行。\n\n錯誤詳情：${(error as Error).message}`,
+                isStreaming: false,
+              }
+            : m
+        )
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }, [messages, user])
+
+  const clearMessages = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    setMessages([])
+  }, [])
+
+  const stopStreaming = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    setIsLoading(false)
+    setMessages((prev) =>
+      prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m))
+    )
+  }, [])
+
+  const regenerateLastMessage = useCallback(async (model?: string) => {
+    // 找到最後一個用戶訊息
+    const lastUserMessageIndex = messages.map(m => m.role).lastIndexOf('user')
+    if (lastUserMessageIndex === -1) return
+
+    const userMessage = messages[lastUserMessageIndex]
+
+    // 移除最後的 AI 回應
+    const newMessages = messages.slice(0, lastUserMessageIndex + 1)
+    setMessages(newMessages)
+
+    // 重新發送（使用指定模型或預設）
+    // TODO: 實際使用 model 參數切換模型
+    console.log('Regenerating with model:', model || 'default')
+
+    // 取消之前的請求
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    abortControllerRef.current = new AbortController()
+
+    // 新增空的 AI 訊息
+    const assistantMessage: Message = {
+      id: generateId(),
+      role: 'assistant',
+      content: '',
+      createdAt: new Date(),
+      isStreaming: true,
+    }
+
+    setMessages([...newMessages, assistantMessage])
+    setIsLoading(true)
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: newMessages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          stream: true,
+          model,
+        }),
+        signal: abortControllerRef.current.signal,
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to regenerate message')
       }
-      setMessages((prev) => [...prev, mockResponse])
+
+      const contentType = response.headers.get('content-type')
+
+      if (contentType?.includes('text/event-stream')) {
+        const reader = response.body?.getReader()
+        const decoder = new TextDecoder()
+
+        if (reader) {
+          let fullContent = ''
+
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+
+            const chunk = decoder.decode(value, { stream: true })
+            const lines = chunk.split('\n')
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6)
+                if (data === '[DONE]') {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMessage.id
+                        ? { ...m, isStreaming: false }
+                        : m
+                    )
+                  )
+                  break
+                }
+
+                try {
+                  const parsed = JSON.parse(data)
+                  if (parsed.content) {
+                    fullContent += parsed.content
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMessage.id
+                          ? { ...m, content: fullContent }
+                          : m
+                      )
+                    )
+                  }
+                } catch (e) {
+                  // 忽略解析錯誤
+                }
+              }
+            }
+          }
+        }
+      } else {
+        const data = await response.json()
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessage.id
+              ? { ...m, content: data.content, isStreaming: false }
+              : m
+          )
+        )
+      }
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') return
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessage.id
+            ? {
+                ...m,
+                content: `重新生成失敗：${(error as Error).message}`,
+                isStreaming: false,
+              }
+            : m
+        )
+      )
     } finally {
       setIsLoading(false)
     }
   }, [messages])
-
-  const clearMessages = useCallback(() => {
-    setMessages([])
-  }, [])
 
   return {
     messages,
     isLoading,
     sendMessage,
     clearMessages,
+    stopStreaming,
+    regenerateLastMessage,
     limitError,
     clearLimitError: () => setLimitError(null),
   }
