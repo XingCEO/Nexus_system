@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/logo.svg" alt="Nexus Logo" width="120" height="120" />
+<img src="https://raw.githubusercontent.com/XingCEO/Nexus_system/main/docs/assets/logo.svg" alt="Nexus Logo" width="120" height="120" />
 
 # Nexus
 
