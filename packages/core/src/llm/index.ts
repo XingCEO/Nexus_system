@@ -18,6 +18,7 @@ export { DEFAULT_MODELS } from './types'
 // Providers
 export { OpenAIProvider, type OpenAIConfig } from './providers/openai'
 export { AnthropicProvider, type AnthropicConfig } from './providers/anthropic'
+export { GeminiProvider, type GeminiConfig } from './providers/gemini'
 export { LMStudioProvider, type LMStudioConfig } from './providers/lmstudio'
 export { OllamaProvider, type OllamaConfig } from './providers/ollama'
 

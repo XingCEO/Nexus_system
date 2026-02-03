@@ -37,6 +37,16 @@ async function getLLMConfig(requestedProvider?: string, requestedModel?: string)
         }
         throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY in environment variables.')
 
+      case 'gemini':
+        if (process.env.GOOGLE_API_KEY) {
+          return {
+            provider: 'gemini',
+            apiKey: process.env.GOOGLE_API_KEY,
+            model: requestedModel || process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+          }
+        }
+        throw new Error('Google API key not configured. Please set GOOGLE_API_KEY in environment variables.')
+
       case 'lmstudio':
         return {
           provider: 'lmstudio',
@@ -68,6 +78,15 @@ async function getLLMConfig(requestedProvider?: string, requestedModel?: string)
       provider: 'openai',
       apiKey: process.env.OPENAI_API_KEY,
       model: process.env.OPENAI_MODEL || 'gpt-4o',
+    }
+  }
+
+  // 其次使用 Google Gemini
+  if (process.env.GOOGLE_API_KEY) {
+    return {
+      provider: 'gemini',
+      apiKey: process.env.GOOGLE_API_KEY,
+      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
     }
   }
 
@@ -196,23 +215,34 @@ export async function GET() {
     // 檢查環境變數中的 API keys
     const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY
     const hasOpenAIKey = !!process.env.OPENAI_API_KEY
+    const hasGoogleKey = !!process.env.GOOGLE_API_KEY
+
+    // 加入 Gemini provider
+    const allProviders: ProviderStatus[] = [
+      ...providers,
+      { provider: 'gemini' as const, available: hasGoogleKey }
+    ]
 
     return Response.json({
-      providers: providers.map((p: ProviderStatus) => ({
+      providers: allProviders.map((p) => ({
         ...p,
         available:
           p.provider === 'anthropic'
             ? hasAnthropicKey
             : p.provider === 'openai'
               ? hasOpenAIKey
-              : p.available,
+              : p.provider === 'gemini'
+                ? hasGoogleKey
+                : p.available,
       })),
       currentConfig: {
         provider: hasAnthropicKey
           ? 'anthropic'
           : hasOpenAIKey
             ? 'openai'
-            : providers.find((p: ProviderStatus) => p.available)?.provider || 'none',
+            : hasGoogleKey
+              ? 'gemini'
+              : providers.find((p: ProviderStatus) => p.available)?.provider || 'none',
       },
     })
   } catch (error) {

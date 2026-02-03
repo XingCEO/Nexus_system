@@ -13,7 +13,8 @@ interface ProviderSelectorProps {
 const PROVIDER_INFO: Record<string, { name: string; icon: string; color: string }> = {
   anthropic: { name: 'Claude', icon: '🟣', color: 'bg-purple-500' },
   openai: { name: 'GPT', icon: '🟢', color: 'bg-emerald-500' },
-  lmstudio: { name: 'LM Studio', icon: '🔵', color: 'bg-blue-500' },
+  gemini: { name: 'Gemini', icon: '🔵', color: 'bg-blue-500' },
+  lmstudio: { name: 'LM Studio', icon: '🟣', color: 'bg-violet-500' },
   ollama: { name: 'Ollama', icon: '⚪', color: 'bg-zinc-500' },
 }
 
@@ -75,7 +76,7 @@ export function ProviderSelector({
 
             {/* Cloud Providers */}
             <div className="px-3 py-1 text-[10px] text-zinc-400 mt-2">雲端服務</div>
-            {['anthropic', 'openai'].map((providerId) => {
+            {['anthropic', 'openai', 'gemini'].map((providerId) => {
               const provider = providerConfig?.providers.find(p => p.provider === providerId)
               const info = PROVIDER_INFO[providerId]
               const isAvailable = provider?.available

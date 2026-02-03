@@ -6,6 +6,7 @@
 import type { LLMProvider, LLMProviderConfig } from './types'
 import { OpenAIProvider } from './providers/openai'
 import { AnthropicProvider } from './providers/anthropic'
+import { GeminiProvider } from './providers/gemini'
 import { LMStudioProvider } from './providers/lmstudio'
 import { OllamaProvider } from './providers/ollama'
 
@@ -26,6 +27,16 @@ export function createLLMProvider(config: LLMProviderConfig): LLMProvider {
         throw new Error('Anthropic API key is required')
       }
       return new AnthropicProvider({
+        apiKey: config.apiKey,
+        baseUrl: config.baseUrl,
+        model: config.model,
+      })
+
+    case 'gemini':
+      if (!config.apiKey) {
+        throw new Error('Google API key is required')
+      }
+      return new GeminiProvider({
         apiKey: config.apiKey,
         baseUrl: config.baseUrl,
         model: config.model,

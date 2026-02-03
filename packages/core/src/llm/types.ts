@@ -51,7 +51,7 @@ export interface LLMProvider {
 }
 
 export interface LLMProviderConfig {
-  provider: 'openai' | 'anthropic' | 'lmstudio' | 'ollama'
+  provider: 'openai' | 'anthropic' | 'gemini' | 'lmstudio' | 'ollama'
   apiKey?: string
   baseUrl?: string
   model: string
@@ -61,6 +61,7 @@ export interface LLMProviderConfig {
 export const DEFAULT_MODELS = {
   openai: 'gpt-4o',
   anthropic: 'claude-sonnet-4-20250514',
+  gemini: 'gemini-1.5-flash',
   lmstudio: 'local-model',
   ollama: 'llama3.2',
 } as const

@@ -79,6 +79,31 @@ export async function POST(req: NextRequest) {
         break
       }
 
+      case 'gemini': {
+        try {
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+            { method: 'GET' }
+          )
+
+          if (response.ok) {
+            const data = await response.json()
+            const models = data.models?.slice(0, 3).map((m: { name: string }) => m.name.split('/').pop()).join(', ') || 'Gemini models'
+            testResult = { success: true, error: '', model: models }
+          } else {
+            const error = await response.json().catch(() => ({}))
+            testResult = {
+              success: false,
+              error: error.error?.message || `API 錯誤: ${response.status}`,
+              model: ''
+            }
+          }
+        } catch (e) {
+          testResult = { success: false, error: '無法連接到 Google AI API', model: '' }
+        }
+        break
+      }
+
       case 'lmstudio': {
         try {
           const baseUrl = apiKey || 'http://localhost:1234/v1'

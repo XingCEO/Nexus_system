@@ -101,7 +101,7 @@ function SettingsContent() {
   const [apiKeys, setApiKeys] = useState({
     openai: '',
     anthropic: '',
-    google: '',
+    gemini: '',
   })
 
   const [apiTestStatus, setApiTestStatus] = useState<{
@@ -109,6 +109,7 @@ function SettingsContent() {
   }>({
     openai: { testing: false, success: null, message: '' },
     anthropic: { testing: false, success: null, message: '' },
+    gemini: { testing: false, success: null, message: '' },
     lmstudio: { testing: false, success: null, message: '' },
     ollama: { testing: false, success: null, message: '' },
   })
@@ -681,18 +682,58 @@ function SettingsContent() {
                           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                         </svg>
                       </div>
-                      <div>
-                        <div className="text-sm font-medium">Google AI</div>
-                        <div className="text-xs text-muted-foreground">Gemini Pro, Gemini Ultra</div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium flex items-center gap-2">
+                          Google AI
+                          {apiTestStatus.gemini.success === true && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-500">已連線</span>
+                          )}
+                          {apiTestStatus.gemini.success === false && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-500">連線失敗</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Gemini 1.5 Pro, Gemini 1.5 Flash</div>
                       </div>
                     </div>
-                    <input
-                      type="password"
-                      value={apiKeys.google}
-                      onChange={(e) => setApiKeys({ ...apiKeys, google: e.target.value })}
-                      placeholder="AIza..."
-                      className="w-full h-10 px-3 rounded-lg border border-border/50 bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        value={apiKeys.gemini}
+                        onChange={(e) => setApiKeys({ ...apiKeys, gemini: e.target.value })}
+                        placeholder="AIza..."
+                        className="flex-1 h-10 px-3 rounded-lg border border-border/50 bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <button
+                        onClick={() => testApiConnection('gemini', apiKeys.gemini)}
+                        disabled={!apiKeys.gemini || apiTestStatus.gemini.testing}
+                        className={cn(
+                          "h-10 px-4 rounded-lg text-sm font-medium transition-all flex items-center gap-2",
+                          apiKeys.gemini
+                            ? "bg-foreground text-background hover:bg-foreground/90"
+                            : "bg-secondary text-muted-foreground cursor-not-allowed"
+                        )}
+                      >
+                        {apiTestStatus.gemini.testing ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+                              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                            </svg>
+                            測試中
+                          </>
+                        ) : (
+                          '測試連線'
+                        )}
+                      </button>
+                    </div>
+                    {apiTestStatus.gemini.message && (
+                      <p className={cn(
+                        "text-xs",
+                        apiTestStatus.gemini.success ? "text-green-500" : "text-red-500"
+                      )}>
+                        {apiTestStatus.gemini.message}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
