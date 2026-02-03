@@ -104,6 +104,47 @@ function SettingsContent() {
     google: '',
   })
 
+  const [apiTestStatus, setApiTestStatus] = useState<{
+    [key: string]: { testing: boolean; success: boolean | null; message: string }
+  }>({
+    openai: { testing: false, success: null, message: '' },
+    anthropic: { testing: false, success: null, message: '' },
+    lmstudio: { testing: false, success: null, message: '' },
+    ollama: { testing: false, success: null, message: '' },
+  })
+
+  // 測試 API 連線
+  const testApiConnection = async (provider: string, apiKey: string) => {
+    setApiTestStatus(prev => ({
+      ...prev,
+      [provider]: { testing: true, success: null, message: '測試中...' }
+    }))
+
+    try {
+      const response = await fetch('/api/test-provider', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey }),
+      })
+
+      const result = await response.json()
+
+      setApiTestStatus(prev => ({
+        ...prev,
+        [provider]: {
+          testing: false,
+          success: result.success,
+          message: result.success ? `已連線 - ${result.model}` : result.error
+        }
+      }))
+    } catch (error) {
+      setApiTestStatus(prev => ({
+        ...prev,
+        [provider]: { testing: false, success: false, message: '測試失敗' }
+      }))
+    }
+  }
+
   const [localLLM, setLocalLLM] = useState({
     provider: 'none' as 'none' | 'lmstudio' | 'ollama',
     lmstudioUrl: 'http://localhost:1234/v1',
@@ -350,15 +391,15 @@ function SettingsContent() {
                   {/* LM Studio */}
                   <div className={cn(
                     "p-4 rounded-xl border space-y-3",
-                    providerStatus.lmstudio ? "border-green-500/50 bg-green-500/5" : "border-border/50"
+                    providerStatus.lmstudio || apiTestStatus.lmstudio.success ? "border-green-500/50 bg-green-500/5" : "border-border/50"
                   )}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "w-8 h-8 rounded-lg flex items-center justify-center",
-                          providerStatus.lmstudio ? "bg-green-500/20" : "bg-purple-500/10"
+                          providerStatus.lmstudio || apiTestStatus.lmstudio.success ? "bg-green-500/20" : "bg-purple-500/10"
                         )}>
-                          <svg viewBox="0 0 24 24" fill="none" className={cn("w-5 h-5", providerStatus.lmstudio ? "text-green-500" : "text-purple-500")}>
+                          <svg viewBox="0 0 24 24" fill="none" className={cn("w-5 h-5", providerStatus.lmstudio || apiTestStatus.lmstudio.success ? "text-green-500" : "text-purple-500")}>
                             <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
                             <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
@@ -366,22 +407,52 @@ function SettingsContent() {
                         <div>
                           <div className="text-sm font-medium flex items-center gap-2">
                             LM Studio
-                            {providerStatus.lmstudio && (
+                            {(providerStatus.lmstudio || apiTestStatus.lmstudio.success) && (
                               <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-500">已連線</span>
+                            )}
+                            {apiTestStatus.lmstudio.success === false && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-500">連線失敗</span>
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground">本機運行，完全免費</div>
                         </div>
                       </div>
                     </div>
-                    <input
-                      type="text"
-                      value={localLLM.lmstudioUrl}
-                      onChange={(e) => setLocalLLM({ ...localLLM, lmstudioUrl: e.target.value })}
-                      placeholder="http://localhost:1234/v1"
-                      className="w-full h-10 px-3 rounded-lg border border-border/50 bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                    {!providerStatus.lmstudio && (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={localLLM.lmstudioUrl}
+                        onChange={(e) => setLocalLLM({ ...localLLM, lmstudioUrl: e.target.value })}
+                        placeholder="http://localhost:1234/v1"
+                        className="flex-1 h-10 px-3 rounded-lg border border-border/50 bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <button
+                        onClick={() => testApiConnection('lmstudio', localLLM.lmstudioUrl)}
+                        disabled={apiTestStatus.lmstudio.testing}
+                        className="h-10 px-4 rounded-lg bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-all flex items-center gap-2"
+                      >
+                        {apiTestStatus.lmstudio.testing ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+                              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                            </svg>
+                            測試中
+                          </>
+                        ) : (
+                          '測試連線'
+                        )}
+                      </button>
+                    </div>
+                    {apiTestStatus.lmstudio.message && (
+                      <p className={cn(
+                        "text-xs",
+                        apiTestStatus.lmstudio.success ? "text-green-500" : "text-red-500"
+                      )}>
+                        {apiTestStatus.lmstudio.message}
+                      </p>
+                    )}
+                    {!providerStatus.lmstudio && !apiTestStatus.lmstudio.success && (
                       <p className="text-xs text-muted-foreground">
                         請先啟動 LM Studio 並載入模型，然後點選「Start Server」
                       </p>
@@ -391,15 +462,15 @@ function SettingsContent() {
                   {/* Ollama */}
                   <div className={cn(
                     "p-4 rounded-xl border space-y-3",
-                    providerStatus.ollama ? "border-green-500/50 bg-green-500/5" : "border-border/50"
+                    providerStatus.ollama || apiTestStatus.ollama.success ? "border-green-500/50 bg-green-500/5" : "border-border/50"
                   )}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "w-8 h-8 rounded-lg flex items-center justify-center",
-                          providerStatus.ollama ? "bg-green-500/20" : "bg-cyan-500/10"
+                          providerStatus.ollama || apiTestStatus.ollama.success ? "bg-green-500/20" : "bg-cyan-500/10"
                         )}>
-                          <svg viewBox="0 0 24 24" fill="none" className={cn("w-5 h-5", providerStatus.ollama ? "text-green-500" : "text-cyan-500")}>
+                          <svg viewBox="0 0 24 24" fill="none" className={cn("w-5 h-5", providerStatus.ollama || apiTestStatus.ollama.success ? "text-green-500" : "text-cyan-500")}>
                             <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
                             <circle cx="12" cy="12" r="4" fill="currentColor"/>
                           </svg>
@@ -407,8 +478,11 @@ function SettingsContent() {
                         <div>
                           <div className="text-sm font-medium flex items-center gap-2">
                             Ollama
-                            {providerStatus.ollama && (
+                            {(providerStatus.ollama || apiTestStatus.ollama.success) && (
                               <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-500">已連線</span>
+                            )}
+                            {apiTestStatus.ollama.success === false && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-500">連線失敗</span>
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground">
@@ -419,35 +493,52 @@ function SettingsContent() {
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="flex gap-2">
                       <input
                         type="text"
                         value={localLLM.ollamaUrl}
                         onChange={(e) => setLocalLLM({ ...localLLM, ollamaUrl: e.target.value })}
                         placeholder="http://localhost:11434"
-                        className="h-10 px-3 rounded-lg border border-border/50 bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="flex-1 h-10 px-3 rounded-lg border border-border/50 bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
                       />
-                      {providerStatus.ollamaModels.length > 0 ? (
-                        <select
-                          value={localLLM.ollamaModel}
-                          onChange={(e) => setLocalLLM({ ...localLLM, ollamaModel: e.target.value })}
-                          className="h-10 px-3 rounded-lg border border-border/50 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        >
-                          {providerStatus.ollamaModels.map((model) => (
-                            <option key={model} value={model}>{model}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type="text"
-                          value={localLLM.ollamaModel}
-                          onChange={(e) => setLocalLLM({ ...localLLM, ollamaModel: e.target.value })}
-                          placeholder="llama3.2"
-                          className="h-10 px-3 rounded-lg border border-border/50 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
-                      )}
+                      <button
+                        onClick={() => testApiConnection('ollama', localLLM.ollamaUrl)}
+                        disabled={apiTestStatus.ollama.testing}
+                        className="h-10 px-4 rounded-lg bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-all flex items-center gap-2"
+                      >
+                        {apiTestStatus.ollama.testing ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+                              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                            </svg>
+                            測試中
+                          </>
+                        ) : (
+                          '測試連線'
+                        )}
+                      </button>
                     </div>
-                    {!providerStatus.ollama && (
+                    {providerStatus.ollamaModels.length > 0 && (
+                      <select
+                        value={localLLM.ollamaModel}
+                        onChange={(e) => setLocalLLM({ ...localLLM, ollamaModel: e.target.value })}
+                        className="w-full h-10 px-3 rounded-lg border border-border/50 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        {providerStatus.ollamaModels.map((model) => (
+                          <option key={model} value={model}>{model}</option>
+                        ))}
+                      </select>
+                    )}
+                    {apiTestStatus.ollama.message && (
+                      <p className={cn(
+                        "text-xs",
+                        apiTestStatus.ollama.success ? "text-green-500" : "text-red-500"
+                      )}>
+                        {apiTestStatus.ollama.message}
+                      </p>
+                    )}
+                    {!providerStatus.ollama && !apiTestStatus.ollama.success && (
                       <p className="text-xs text-muted-foreground">
                         請執行 <code className="px-1 py-0.5 rounded bg-secondary">ollama serve</code> 啟動服務
                       </p>
@@ -465,18 +556,58 @@ function SettingsContent() {
                           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       </div>
-                      <div>
-                        <div className="text-sm font-medium">OpenAI</div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium flex items-center gap-2">
+                          OpenAI
+                          {apiTestStatus.openai.success === true && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-500">已連線</span>
+                          )}
+                          {apiTestStatus.openai.success === false && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-500">連線失敗</span>
+                          )}
+                        </div>
                         <div className="text-xs text-muted-foreground">GPT-4, GPT-3.5</div>
                       </div>
                     </div>
-                    <input
-                      type="password"
-                      value={apiKeys.openai}
-                      onChange={(e) => setApiKeys({ ...apiKeys, openai: e.target.value })}
-                      placeholder="sk-..."
-                      className="w-full h-10 px-3 rounded-lg border border-border/50 bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        value={apiKeys.openai}
+                        onChange={(e) => setApiKeys({ ...apiKeys, openai: e.target.value })}
+                        placeholder="sk-..."
+                        className="flex-1 h-10 px-3 rounded-lg border border-border/50 bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <button
+                        onClick={() => testApiConnection('openai', apiKeys.openai)}
+                        disabled={!apiKeys.openai || apiTestStatus.openai.testing}
+                        className={cn(
+                          "h-10 px-4 rounded-lg text-sm font-medium transition-all flex items-center gap-2",
+                          apiKeys.openai
+                            ? "bg-foreground text-background hover:bg-foreground/90"
+                            : "bg-secondary text-muted-foreground cursor-not-allowed"
+                        )}
+                      >
+                        {apiTestStatus.openai.testing ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+                              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                            </svg>
+                            測試中
+                          </>
+                        ) : (
+                          '測試連線'
+                        )}
+                      </button>
+                    </div>
+                    {apiTestStatus.openai.message && (
+                      <p className={cn(
+                        "text-xs",
+                        apiTestStatus.openai.success ? "text-green-500" : "text-red-500"
+                      )}>
+                        {apiTestStatus.openai.message}
+                      </p>
+                    )}
                   </div>
 
                   <div className="p-4 rounded-xl border border-border/50 space-y-3">
@@ -486,18 +617,58 @@ function SettingsContent() {
                           <path d="M12 2L2 19h20L12 2z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
                         </svg>
                       </div>
-                      <div>
-                        <div className="text-sm font-medium">Anthropic</div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium flex items-center gap-2">
+                          Anthropic
+                          {apiTestStatus.anthropic.success === true && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-500">已連線</span>
+                          )}
+                          {apiTestStatus.anthropic.success === false && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-500">連線失敗</span>
+                          )}
+                        </div>
                         <div className="text-xs text-muted-foreground">Claude 3.5, Claude 3</div>
                       </div>
                     </div>
-                    <input
-                      type="password"
-                      value={apiKeys.anthropic}
-                      onChange={(e) => setApiKeys({ ...apiKeys, anthropic: e.target.value })}
-                      placeholder="sk-ant-..."
-                      className="w-full h-10 px-3 rounded-lg border border-border/50 bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        value={apiKeys.anthropic}
+                        onChange={(e) => setApiKeys({ ...apiKeys, anthropic: e.target.value })}
+                        placeholder="sk-ant-..."
+                        className="flex-1 h-10 px-3 rounded-lg border border-border/50 bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <button
+                        onClick={() => testApiConnection('anthropic', apiKeys.anthropic)}
+                        disabled={!apiKeys.anthropic || apiTestStatus.anthropic.testing}
+                        className={cn(
+                          "h-10 px-4 rounded-lg text-sm font-medium transition-all flex items-center gap-2",
+                          apiKeys.anthropic
+                            ? "bg-foreground text-background hover:bg-foreground/90"
+                            : "bg-secondary text-muted-foreground cursor-not-allowed"
+                        )}
+                      >
+                        {apiTestStatus.anthropic.testing ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
+                              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                            </svg>
+                            測試中
+                          </>
+                        ) : (
+                          '測試連線'
+                        )}
+                      </button>
+                    </div>
+                    {apiTestStatus.anthropic.message && (
+                      <p className={cn(
+                        "text-xs",
+                        apiTestStatus.anthropic.success ? "text-green-500" : "text-red-500"
+                      )}>
+                        {apiTestStatus.anthropic.message}
+                      </p>
+                    )}
                   </div>
 
                   <div className="p-4 rounded-xl border border-border/50 space-y-3">
