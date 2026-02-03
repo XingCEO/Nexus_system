@@ -50,7 +50,7 @@ async function getLLMConfig(requestedProvider?: string, requestedModel?: string)
       case 'lmstudio':
         return {
           provider: 'lmstudio',
-          baseUrl: process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1',
+          baseUrl: process.env.LMSTUDIO_BASE_URL || 'http://127.0.0.1:8045/v1',
           model: requestedModel || process.env.LMSTUDIO_MODEL || 'local-model',
         }
 
@@ -97,7 +97,7 @@ async function getLLMConfig(requestedProvider?: string, requestedModel?: string)
   if (lmstudio?.available) {
     return {
       provider: 'lmstudio',
-      baseUrl: process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1',
+      baseUrl: process.env.LMSTUDIO_BASE_URL || 'http://127.0.0.1:8045/v1',
       model: process.env.LMSTUDIO_MODEL || 'local-model',
     }
   }

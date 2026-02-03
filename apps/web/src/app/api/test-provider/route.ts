@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
 
       case 'lmstudio': {
         try {
-          const baseUrl = apiKey || 'http://localhost:1234/v1'
+          const baseUrl = apiKey || 'http://127.0.0.1:8045/v1'
           const response = await fetch(`${baseUrl}/models`, {
             signal: AbortSignal.timeout(5000),
           })

@@ -44,7 +44,7 @@ export function createLLMProvider(config: LLMProviderConfig): LLMProvider {
 
     case 'lmstudio':
       return new LMStudioProvider({
-        baseUrl: config.baseUrl || 'http://localhost:1234/v1',
+        baseUrl: config.baseUrl || 'http://127.0.0.1:8045/v1',
         model: config.model,
       })
 

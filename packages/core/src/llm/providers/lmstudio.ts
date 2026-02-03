@@ -17,7 +17,7 @@ export class LMStudioProvider implements LLMProvider {
   private baseUrl: string
 
   constructor(config: LMStudioConfig = {}) {
-    this.baseUrl = config.baseUrl || 'http://localhost:1234/v1'
+    this.baseUrl = config.baseUrl || 'http://127.0.0.1:8045/v1'
     this.model = config.model || 'local-model'
   }
 

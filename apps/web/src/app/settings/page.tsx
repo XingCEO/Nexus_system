@@ -148,7 +148,7 @@ function SettingsContent() {
 
   const [localLLM, setLocalLLM] = useState({
     provider: 'none' as 'none' | 'lmstudio' | 'ollama',
-    lmstudioUrl: 'http://localhost:1234/v1',
+    lmstudioUrl: 'http://127.0.0.1:8045/v1',
     ollamaUrl: 'http://localhost:11434',
     ollamaModel: 'llama3.2',
   })
