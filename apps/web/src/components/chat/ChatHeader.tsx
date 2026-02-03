@@ -9,9 +9,14 @@ import { LogoMark } from '@/components/Logo'
 import { cn } from '@/lib/utils'
 import { signOut, getTierConfig } from '@/lib/auth'
 import { useUser } from '@/components/AuthGuard'
+import { ProviderSelector } from './ProviderSelector'
+import type { ProviderConfig } from '@/hooks/useChat'
 
 interface ChatHeaderProps {
   onClear: () => void
+  selectedProvider: string | null
+  onSelectProvider: (provider: string) => void
+  providerConfig: ProviderConfig | null
 }
 
 function UserIcon({ className }: { className?: string }) {
@@ -41,7 +46,7 @@ function LogoutIcon({ className }: { className?: string }) {
   )
 }
 
-export function ChatHeader({ onClear }: ChatHeaderProps) {
+export function ChatHeader({ onClear, selectedProvider, onSelectProvider, providerConfig }: ChatHeaderProps) {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
   const [showUserMenu, setShowUserMenu] = useState(false)
@@ -94,7 +99,16 @@ export function ChatHeader({ onClear }: ChatHeaderProps) {
         </nav>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-3">
+        {/* Provider Selector */}
+        <ProviderSelector
+          selectedProvider={selectedProvider}
+          onSelectProvider={onSelectProvider}
+          providerConfig={providerConfig}
+        />
+
+        <div className="w-px h-5 bg-border/50" />
+
         <button
           onClick={onClear}
           className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all duration-200"

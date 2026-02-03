@@ -12,9 +12,48 @@ interface ProviderStatus {
   models?: string[]
 }
 
-// 從環境變數讀取配置，並自動偵測本機 LLM
-async function getLLMConfig(): Promise<LLMProviderConfig> {
-  // 優先使用 Anthropic
+// 從請求或環境變數讀取配置
+async function getLLMConfig(requestedProvider?: string, requestedModel?: string): Promise<LLMProviderConfig> {
+  // 如果用戶指定了 provider
+  if (requestedProvider) {
+    switch (requestedProvider) {
+      case 'anthropic':
+        if (process.env.ANTHROPIC_API_KEY) {
+          return {
+            provider: 'anthropic',
+            apiKey: process.env.ANTHROPIC_API_KEY,
+            model: requestedModel || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514',
+          }
+        }
+        throw new Error('Anthropic API key not configured. Please set ANTHROPIC_API_KEY in environment variables.')
+
+      case 'openai':
+        if (process.env.OPENAI_API_KEY) {
+          return {
+            provider: 'openai',
+            apiKey: process.env.OPENAI_API_KEY,
+            model: requestedModel || process.env.OPENAI_MODEL || 'gpt-4o',
+          }
+        }
+        throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY in environment variables.')
+
+      case 'lmstudio':
+        return {
+          provider: 'lmstudio',
+          baseUrl: process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1',
+          model: requestedModel || process.env.LMSTUDIO_MODEL || 'local-model',
+        }
+
+      case 'ollama':
+        return {
+          provider: 'ollama',
+          baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+          model: requestedModel || process.env.OLLAMA_MODEL || 'llama3.2',
+        }
+    }
+  }
+
+  // 預設：優先使用 Anthropic
   if (process.env.ANTHROPIC_API_KEY) {
     return {
       provider: 'anthropic',
@@ -32,25 +71,7 @@ async function getLLMConfig(): Promise<LLMProviderConfig> {
     }
   }
 
-  // 明確指定使用 LM Studio
-  if (process.env.USE_LMSTUDIO === 'true') {
-    return {
-      provider: 'lmstudio',
-      baseUrl: process.env.LMSTUDIO_BASE_URL || 'http://localhost:1234/v1',
-      model: process.env.LMSTUDIO_MODEL || 'local-model',
-    }
-  }
-
-  // 明確指定使用 Ollama
-  if (process.env.USE_OLLAMA === 'true') {
-    return {
-      provider: 'ollama',
-      baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-      model: process.env.OLLAMA_MODEL || 'llama3.2',
-    }
-  }
-
-  // 自動偵測本機 LLM（優先 LM Studio，其次 Ollama）
+  // 自動偵測本機 LLM
   const available = await detectAvailableProviders()
 
   const lmstudio = available.find((p: ProviderStatus) => p.provider === 'lmstudio')
@@ -71,19 +92,14 @@ async function getLLMConfig(): Promise<LLMProviderConfig> {
     }
   }
 
-  // 沒有可用的 provider
-  return {
-    provider: 'ollama',
-    baseUrl: 'http://localhost:11434',
-    model: 'llama3.2',
-  }
+  throw new Error('No LLM provider available. Please configure ANTHROPIC_API_KEY or OPENAI_API_KEY, or start a local LLM server.')
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, stream = false } = await req.json()
+    const { messages, stream = false, provider: requestedProvider, model: requestedModel } = await req.json()
 
-    const config = await getLLMConfig()
+    const config = await getLLMConfig(requestedProvider, requestedModel)
 
     // 檢查是否有可用的 provider
     if (config.provider === 'ollama' || config.provider === 'lmstudio') {

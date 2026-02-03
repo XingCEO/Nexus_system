@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { generateId } from '@super/shared/utils'
 import { checkMessageLimit, incrementMessageCount, LimitCheckResult } from '@/lib/usage'
 import { useUser } from '@/components/AuthGuard'
@@ -13,12 +13,48 @@ interface Message {
   isStreaming?: boolean
 }
 
+export interface ProviderInfo {
+  provider: string
+  available: boolean
+  models?: string[]
+}
+
+export interface ProviderConfig {
+  providers: ProviderInfo[]
+  currentConfig: {
+    provider: string
+  }
+}
+
 export function useChat() {
   const { user } = useUser()
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [limitError, setLimitError] = useState<LimitCheckResult | null>(null)
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null)
+  const [selectedModel, setSelectedModel] = useState<string | null>(null)
+  const [providerConfig, setProviderConfig] = useState<ProviderConfig | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // 載入可用的 providers
+  useEffect(() => {
+    async function loadProviders() {
+      try {
+        const response = await fetch('/api/chat')
+        if (response.ok) {
+          const data = await response.json()
+          setProviderConfig(data)
+          // 設定預設 provider
+          if (data.currentConfig?.provider && data.currentConfig.provider !== 'none') {
+            setSelectedProvider(data.currentConfig.provider)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load providers:', error)
+      }
+    }
+    loadProviders()
+  }, [])
 
   const sendMessage = useCallback(async (content: string) => {
     // 檢查訊息限制
@@ -70,6 +106,8 @@ export function useChat() {
             content: m.content,
           })),
           stream: true,
+          provider: selectedProvider,
+          model: selectedModel,
         }),
         signal: abortControllerRef.current.signal,
       })
@@ -166,7 +204,7 @@ export function useChat() {
     } finally {
       setIsLoading(false)
     }
-  }, [messages, user])
+  }, [messages, user, selectedProvider, selectedModel])
 
   const clearMessages = useCallback(() => {
     if (abortControllerRef.current) {
@@ -190,15 +228,9 @@ export function useChat() {
     const lastUserMessageIndex = messages.map(m => m.role).lastIndexOf('user')
     if (lastUserMessageIndex === -1) return
 
-    const userMessage = messages[lastUserMessageIndex]
-
     // 移除最後的 AI 回應
     const newMessages = messages.slice(0, lastUserMessageIndex + 1)
     setMessages(newMessages)
-
-    // 重新發送（使用指定模型或預設）
-    // TODO: 實際使用 model 參數切換模型
-    console.log('Regenerating with model:', model || 'default')
 
     // 取消之前的請求
     if (abortControllerRef.current) {
@@ -218,6 +250,16 @@ export function useChat() {
     setMessages([...newMessages, assistantMessage])
     setIsLoading(true)
 
+    // 解析 model 參數，格式可能是 "provider:model" 或只是 "model"
+    let useProvider = selectedProvider
+    let useModel = model || selectedModel
+
+    if (model && model.includes(':')) {
+      const [p, m] = model.split(':')
+      useProvider = p
+      useModel = m
+    }
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -228,7 +270,8 @@ export function useChat() {
             content: m.content,
           })),
           stream: true,
-          model,
+          provider: useProvider,
+          model: useModel,
         }),
         signal: abortControllerRef.current.signal,
       })
@@ -313,7 +356,7 @@ export function useChat() {
     } finally {
       setIsLoading(false)
     }
-  }, [messages])
+  }, [messages, selectedProvider, selectedModel])
 
   return {
     messages,
@@ -324,5 +367,11 @@ export function useChat() {
     regenerateLastMessage,
     limitError,
     clearLimitError: () => setLimitError(null),
+    // Provider 相關
+    selectedProvider,
+    setSelectedProvider,
+    selectedModel,
+    setSelectedModel,
+    providerConfig,
   }
 }

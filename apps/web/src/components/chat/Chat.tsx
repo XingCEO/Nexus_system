@@ -19,7 +19,18 @@ const prompts = [
 
 export function Chat() {
   const { user } = useUser()
-  const { messages, isLoading, sendMessage, clearMessages, regenerateLastMessage, limitError, clearLimitError } = useChat()
+  const {
+    messages,
+    isLoading,
+    sendMessage,
+    clearMessages,
+    regenerateLastMessage,
+    limitError,
+    clearLimitError,
+    selectedProvider,
+    setSelectedProvider,
+    providerConfig,
+  } = useChat()
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -32,7 +43,12 @@ export function Chat() {
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      <ChatHeader onClear={clearMessages} />
+      <ChatHeader
+        onClear={clearMessages}
+        selectedProvider={selectedProvider}
+        onSelectProvider={setSelectedProvider}
+        providerConfig={providerConfig}
+      />
 
       <div className="flex-1 overflow-y-auto">
         <AnimatePresence mode="wait">
